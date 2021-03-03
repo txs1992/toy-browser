@@ -1,8 +1,4 @@
-const net = require("net");
 const Request = require("./request");
-
-const CONTENT_TYPE = "Content-Type";
-const URLENCODED = "application/x-www-form-urlencoded";
 
 void (async function () {
   let request = new Request({
@@ -18,9 +14,9 @@ void (async function () {
     },
   });
 
-  console.log(request)
+  // console.log(request);
   let response = await request.send();
-  console.log(response)
+  console.log(response);
 })();
 
 // console.log(Utils.toString())
