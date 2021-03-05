@@ -49,6 +49,7 @@ class Request {
       connection
         .on("data", (data) => {
           parser.receive(data.toString());
+
           if (parser.isFinished) {
             reslove(parser.response);
             connection.end();
