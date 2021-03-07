@@ -59,8 +59,6 @@ class Request {
           reject(err);
           connection.end();
         });
-
-      // reslove("ok");
     });
   }
 
