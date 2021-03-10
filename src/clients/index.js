@@ -16,7 +16,7 @@ void (async function () {
   });
 
   let response = await request.send();
-  console.log(response)
+  // console.log(response)
   Parser.parseHTML(response.body)
 })();
 

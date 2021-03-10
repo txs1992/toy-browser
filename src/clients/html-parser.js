@@ -1,8 +1,52 @@
 const EOF = Symbol("EOF"); // 文件结束 End of file
 let currentToken = null;
+let currentTextNode = null;
+let currentAttribute = null;
+let stack = [{ type: "document", children: [] }];
 
 function emit(token) {
+  if (token.type === "text") {
+    return;
+  }
+
+  let top = stack[stack.length - 1];
+
+  if (token.type === "startTag") {
+    let element = {
+      type: "element",
+      children: [],
+      attributes: [],
+    };
+
+    element.tagName = token.tagName;
+
+    for (let p in token) {
+      if (p !== "type" && p !== "tagName") {
+        element.attributes.push({
+          name: p,
+          value: token[p],
+        });
+      }
+    }
+
+    top.children.push(element);
+    element.parent = top;
+
+    if (!token.isSelfClosing) {
+      stack.push(element);
+    }
+
+    currentTextNode = null;
+  } else if (token.type === "endTag") {
+    if (top.tagName !== token.tagName) {
+      throw new Error("Tag start end doesn.t match!");
+    } else {
+      stack.pop();
+    }
+    currentTextNode = null;
+  }
   console.log(token);
+  // if (token.type)
 }
 
 function data(c) {
@@ -75,6 +119,8 @@ function attributeName(c) {
   } else if (c === "\u0000") {
   } else if (c === '"' || c === "'" || c === "<") {
   } else {
+    currentAttribute.name += c;
+    return attributeName;
   }
 }
 
@@ -157,7 +203,21 @@ function unquotedAttributeValue(c) {
   }
 }
 
-function afterQuotedAttributeValue(c) {}
+function afterQuotedAttributeValue(c) {
+  if (c.match(/^[\t\n\f ]$/)) {
+    return beforeAttributeName;
+  } else if (c === "/") {
+    return selfClosingStartTag;
+  } else if (c === ">") {
+    currentToken[currentAttribute.name] = currentAttribute.value;
+    emit(currentToken);
+    return data;
+  } else if (c === EOF) {
+  } else {
+    currentAttribute.value += c;
+    return doubleQuotedAttributeValue;
+  }
+}
 
 function selfClosingStartTag(c) {
   if (c === ">") {
@@ -174,5 +234,5 @@ module.exports.parseHTML = function parseHTML(html) {
     state = state(c);
   }
   state = state(EOF);
-  // console.log(html);
+  console.log(stack);
 };
