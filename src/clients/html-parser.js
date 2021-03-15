@@ -1,8 +1,17 @@
+const css = require("css");
 const EOF = Symbol("EOF"); // 文件结束 End of file
 let currentToken = null;
 let currentTextNode = null;
 let currentAttribute = null;
 let stack = [{ type: "document", children: [] }];
+
+// 加入一个新的函数 addCSSRules，这里我们把 CSS 规则暂存到一个数组里面
+let rules = [];
+function addCSSRules(text) {
+  let ast = css.parse(text);
+  console.log(JSON.stringify(ast, null, "    "));
+  rules.push(...ast.stylesheet.rules)
+}
 
 function emit(token) {
   // if (token.type === "text") {
@@ -11,6 +20,9 @@ function emit(token) {
 
   let top = stack[stack.length - 1];
 
+  // console.log(token.tagName)
+
+  console.log("token", `|${token.type}|`)
   if (token.type === "startTag") {
     let element = {
       type: "element",
@@ -38,9 +50,15 @@ function emit(token) {
 
     currentTextNode = null;
   } else if (token.type === "endTag") {
+    console.log("endddddd")
     if (top.tagName !== token.tagName) {
       throw new Error("Tag start end doesn.t match!");
     } else {
+      /* ---------- 遇到 style 标签时，执行添加 CSS 规则的操作 ---------- */
+     
+      if (top.tagName === "style") {
+        addCSSRules(top.children[0].content);
+      }
       stack.pop();
     }
     currentTextNode = null;
@@ -50,7 +68,7 @@ function emit(token) {
         type: "text",
         content: "",
       };
-      top.children.push(currentTextNode)
+      top.children.push(currentTextNode);
     }
     currentTextNode.content += token.content;
   }
@@ -83,6 +101,7 @@ function tagOpen(c) {
 }
 
 function endTagOpen(c) {
+  console.log("endTagOpen", c, currentToken.tagName)
   if (c.match(/^[a-zA-Z]$/)) {
     currentToken = { type: "endTag", tagName: "" };
     return tagName(c);
@@ -93,14 +112,16 @@ function endTagOpen(c) {
 }
 
 function tagName(c) {
+  // console.log("tagName：", c, currentToken)
   if (c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
   } else if (c === "/") {
     return selfClosingStartTag;
   } else if (c === ">") {
-    currentToken.tagName += c;
+    // currentToken.tagName += c;
     return data;
   } else {
+    currentToken.tagName += c;
     return tagName;
   }
 }
@@ -244,5 +265,5 @@ module.exports.parseHTML = function parseHTML(html) {
     state = state(c);
   }
   state = state(EOF);
-  console.log(stack);
+  // console.log(stack);
 };
