@@ -10,19 +10,12 @@ let rules = [];
 function addCSSRules(text) {
   let ast = css.parse(text);
   console.log(JSON.stringify(ast, null, "    "));
-  rules.push(...ast.stylesheet.rules)
+  rules.push(...ast.stylesheet.rules);
 }
 
 function emit(token) {
-  // if (token.type === "text") {
-  //   return;
-  // }
-
   let top = stack[stack.length - 1];
 
-  // console.log(token.tagName)
-
-  console.log("token", `|${token.type}|`)
   if (token.type === "startTag") {
     let element = {
       type: "element",
@@ -50,12 +43,11 @@ function emit(token) {
 
     currentTextNode = null;
   } else if (token.type === "endTag") {
-    console.log("endddddd")
     if (top.tagName !== token.tagName) {
       throw new Error("Tag start end doesn.t match!");
     } else {
       /* ---------- 遇到 style 标签时，执行添加 CSS 规则的操作 ---------- */
-     
+
       if (top.tagName === "style") {
         addCSSRules(top.children[0].content);
       }
@@ -72,9 +64,6 @@ function emit(token) {
     }
     currentTextNode.content += token.content;
   }
-
-  // console.log(token);
-  // if (token.type)
 }
 
 function data(c) {
@@ -101,7 +90,6 @@ function tagOpen(c) {
 }
 
 function endTagOpen(c) {
-  console.log("endTagOpen", c, currentToken.tagName)
   if (c.match(/^[a-zA-Z]$/)) {
     currentToken = { type: "endTag", tagName: "" };
     return tagName(c);
@@ -111,17 +99,27 @@ function endTagOpen(c) {
   }
 }
 
+function selfClosingStartTag(c) {
+  if (c === ">") {
+    currentToken.isSelfClosing = true;
+    return data;
+  } else if (c === "EOF") {
+  } else {
+  }
+}
+
 function tagName(c) {
-  // console.log("tagName：", c, currentToken)
   if (c.match(/^[\t\n\f ]$/)) {
     return beforeAttributeName;
   } else if (c === "/") {
     return selfClosingStartTag;
+  } else if (c.match(/^[a-zA-Z]$/)) {
+    currentToken.tagName += c;
+    return tagName;
   } else if (c === ">") {
-    // currentToken.tagName += c;
+    emit(currentToken);
     return data;
   } else {
-    currentToken.tagName += c;
     return tagName;
   }
 }
@@ -250,20 +248,10 @@ function afterQuotedAttributeValue(c) {
   }
 }
 
-function selfClosingStartTag(c) {
-  if (c === ">") {
-    currentToken.isSelfClosing = true;
-    return data;
-  } else if (c === "EOF") {
-  } else {
-  }
-}
-
 module.exports.parseHTML = function parseHTML(html) {
   let state = data;
   for (let c of html) {
     state = state(c);
   }
   state = state(EOF);
-  // console.log(stack);
 };
