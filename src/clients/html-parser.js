@@ -1,4 +1,6 @@
 const css = require("css");
+const { match } = require("node:assert");
+// const { match } = require("node:assert");
 const EOF = Symbol("EOF"); // 文件结束 End of file
 let currentToken = null;
 let currentTextNode = null;
@@ -14,9 +16,40 @@ function addCSSRules(text) {
 }
 
 function computeCSS(element) {
-  console.log(rules)
-  console.log("compute CSS for Element", element)
+  const elements = stack.slice().reverse();
+
+  if (!element.computedStyle) {
+    element.computedStyle = {};
+  }
+
+  for (let rule of rules) {
+    var selectorParts = rule.selectors[0].split(" ").reverse();
+
+    if (!match(element, selectorParts[0])) {
+      continue;
+    }
+
+    let matched = false;
+
+    let j = 1;
+    for (let i = 0; i < elements.length; i++) {
+      if (match(elements[i], selectorParts[j])) {
+        j++;
+      }
+    }
+
+    if (j >= selectorParts.length) {
+      matched = true;
+    }
+
+    if (matched) {
+      // 如果匹配到，我们要加入
+      console.log("Element", element, "matched rule", rule);
+    }
+  }
 }
+
+function match(element, selector) {}
 
 function emit(token) {
   let top = stack[stack.length - 1];
@@ -39,7 +72,7 @@ function emit(token) {
       }
     }
 
-    computeCSS(element)
+    computeCSS(element);
 
     top.children.push(element);
     element.parent = top;
