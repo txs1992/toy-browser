@@ -1,6 +1,4 @@
 const css = require("css");
-const { match } = require("node:assert");
-// const { match } = require("node:assert");
 const EOF = Symbol("EOF"); // 文件结束 End of file
 let currentToken = null;
 let currentTextNode = null;
@@ -22,6 +20,9 @@ function computeCSS(element) {
     element.computedStyle = {};
   }
 
+  // console.log("rules", rules);
+  // console.log("element", element);
+
   for (let rule of rules) {
     var selectorParts = rule.selectors[0].split(" ").reverse();
 
@@ -38,6 +39,8 @@ function computeCSS(element) {
       }
     }
 
+    // console.log("matched：", matched);
+
     if (j >= selectorParts.length) {
       matched = true;
     }
@@ -49,7 +52,29 @@ function computeCSS(element) {
   }
 }
 
-function match(element, selector) {}
+function match(element, selector) {
+  if (!selector || !element.attributes) {
+    return false;
+  }
+
+  if (selector.charAt(0) === "#") {
+    const attr = element.attributes.filter((attr) => attr.name === "id")[0];
+    if (attr && attr.value === selector.replace("#", "")) {
+      return true;
+    }
+  } else if (selector.charAt(0) === ".") {
+    const attr = element.attributes.filter((attr) => attr.name === "class")[0];
+    if (attr && attr.value === selector.replace(".", "")) {
+      return true;
+    }
+  } else {
+    if (element.tagName === selector) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 function emit(token) {
   let top = stack[stack.length - 1];
@@ -142,6 +167,7 @@ function endTagOpen(c) {
 function selfClosingStartTag(c) {
   if (c === ">") {
     currentToken.isSelfClosing = true;
+    emit(currentToken);
     return data;
   } else if (c === "EOF") {
   } else {
