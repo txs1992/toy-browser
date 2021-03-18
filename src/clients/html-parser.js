@@ -1,4 +1,5 @@
 const css = require("css");
+const layout = require("./layout");
 const EOF = Symbol("EOF"); // 文件结束 End of file
 let currentToken = null;
 let currentTextNode = null;
@@ -62,7 +63,6 @@ function computeCSS(element) {
           computedStyle[declaration.property].specificity = sp;
         }
       }
-      console.log(element);
     }
   }
 }
@@ -162,6 +162,7 @@ function emit(token) {
       if (top.tagName === "style") {
         addCSSRules(top.children[0].content);
       }
+      layout(top)
       stack.pop();
     }
     currentTextNode = null;
