@@ -20,9 +20,6 @@ function computeCSS(element) {
     element.computedStyle = {};
   }
 
-  // console.log("rules", rules);
-  // console.log("element", element);
-
   for (let rule of rules) {
     var selectorParts = rule.selectors[0].split(" ").reverse();
 
@@ -39,15 +36,33 @@ function computeCSS(element) {
       }
     }
 
-    // console.log("matched：", matched);
-
     if (j >= selectorParts.length) {
       matched = true;
     }
 
     if (matched) {
       // 如果匹配到，我们要加入
-      console.log("Element", element, "matched rule", rule);
+      const sp = specificity(rule.selectors[0]);
+      const computedStyle = element.computedStyle;
+      for (let declaration of rule.declarations) {
+        if (!computedStyle[declaration.property]) {
+          computedStyle[declaration.property] = {};
+        }
+        // computedStyle[declaration.property].value = declaration.value;
+        if (!computedStyle[declaration.property].specificity) {
+          computedStyle[declaration.property].value = declaration.value;
+          computedStyle[declaration.property].specificity = sp;
+        } else if (
+          compareSpecificity(
+            computedStyle[declaration.property].specificity,
+            sp
+          ) < 0
+        ) {
+          computedStyle[declaration.property].value = declaration.value;
+          computedStyle[declaration.property].specificity = sp;
+        }
+      }
+      console.log(element);
     }
   }
 }
@@ -74,6 +89,37 @@ function match(element, selector) {
   }
 
   return false;
+}
+
+function specificity(selector) {
+  let pattern = [0, 0, 0, 0];
+  let selectorParts = selector.split(" ");
+  for (let part of selectorParts) {
+    switch (part.charAt(0)) {
+      case "#":
+        pattern[1]++;
+        break;
+      case ".":
+        pattern[2]++;
+        break;
+      default:
+        pattern[3]++;
+        break;
+    }
+  }
+  return pattern;
+}
+
+function compareSpecificity(sp1, sp2) {
+  let index = 0;
+
+  while (index < sp1.length) {
+    if (sp1[index] === sp2[index]) {
+      index++;
+    } else {
+      return sp1[index] - sp2[index];
+    }
+  }
 }
 
 function emit(token) {
