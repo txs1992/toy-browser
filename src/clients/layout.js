@@ -30,6 +30,7 @@ function layout(element) {
 
   const style = elementStyle;
 
+  /* ------------------- 初始化默认值开始 ------------------- */
   // 初始化默认空值
   ["width", "height"].forEach((size) => {
     if (style[size] === "auto" || style[size === ""]) {
@@ -120,7 +121,9 @@ function layout(element) {
     crossBase = 0;
     crossSign = 1;
   }
+  /* ------------------- 初始化默认值结束 ------------------- */
 
+  /* ------------------- 布局分行开始 ------------------- */
   let isAutoMainSize = false;
   if (!style[mainSize]) {
     // auto sizing
@@ -175,13 +178,115 @@ function layout(element) {
       }
 
       if (itemStyle[crossSize] !== null && itemStyle[crossSize] !== 0) {
-        crossSpace = Math.max(crossSpace, itemStyle[crossSize])
+        crossSpace = Math.max(crossSpace, itemStyle[crossSize]);
       }
-      mainSpace -= itemStyle[mainSize]
+      mainSpace -= itemStyle[mainSize];
     }
   }
 
   flexLine.mainSpace = mainSpace;
+  /* ------------------- 布局分行结束 ------------------- */
+
+  /* ------------------- 计算主轴方向开始 ------------------- */
+  if (style.flexWrap === "nowrap" || isAutoMainSize) {
+    flexLine.crossSpace = style[crossSize !== undefined]
+      ? style[crossSize]
+      : crossSpace;
+  } else {
+    flex.crossSpace = crossSpace;
+  }
+
+  if (mainSpace < 0) {
+    // overflow  (happens only if container is single line), scale every item
+    // 如果超出就等比例缩放
+    const scale = style[mainSize] / (style[mainSize] - mainSpace);
+    const currentMain = mainBase;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemStyle = getStyle(item);
+
+      if (itemStyle.flex) {
+        itemStyle[mainSize] = 0;
+      }
+
+      itemStyle[mainSize] = itemStyle[mainSize] * scale;
+      itemStyle[mainStart] = currentMain;
+      itemStyle[mainEnd] =
+        itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+      currentMain = itemStyle[mainEnd];
+    }
+  } else {
+    // process each flex line
+    flexLines.forEach((items) => {
+      const mainSpace = items.mainSpace;
+      let flexTotal = 0;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const itemStyle = getStyle(item);
+
+        if (itemStyle.flex !== null && itemStyle.flex !== 0) {
+          flexTotal += items.flex;
+        }
+      }
+
+      if (flexTotal > 0) {
+        // There is flexible flex items
+        const currentMain = mainBase;
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const itemStyle = getStyle(item);
+
+          if (itemStyle.flex) {
+            itemStyle[mainSize] = (mainSpace / flexTotal) * itemStyle.flex;
+          }
+          itemStyle[mainStart] = currentMain;
+          itemStyle[mainEnd] =
+            itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+          currentMain = itemStyle[mainEnd];
+        }
+      } else {
+        let currentMain, step;
+        // There is *NO* flexible flex items, which means, justifyContent shoud work
+        if (style.justifyContent === "flex-start") {
+          currentMain = mainBase;
+          step = 0;
+        }
+
+        if (style.justifyContent === "flex-end") {
+          currentMain = mainSpace * mainSign + mainBase;
+          step = 0;
+        }
+
+        if (style.justifyContent === "center") {
+          currentMain = (mainSpace / 2) * mainSign + mainBase;
+          step = 0;
+        }
+
+        if (style.justifyContent === "space-between") {
+          step = (mainSpace / (items.length - 1)) * mainSign;
+          currentMain = mainBase;
+        }
+
+        if (style.justifyContent === "space-around") {
+          step = (mainSpace / items.lengt) * mainSign;
+          currentMain = step / 2 + mainBase;
+        }
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const itemStyle = getStyle(item);
+          items[mainStart] = currentMain;
+          // itemStyle[(mainSign, currentMain)];
+          itemStyle[mainEnd] =
+            itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+            currentMain = itemStyle[mainEnd] + step;
+        }
+      }
+    });
+  }
+  /* ------------------- 计算主轴方向结束 ------------------- */
 }
 
 module.exports = layout;
