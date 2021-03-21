@@ -1,3 +1,6 @@
+
+const images = require("images");
+const render = require("./render");
 const Request = require("./request");
 const Parser = require("./html-parser");
 
@@ -16,8 +19,13 @@ void (async function () {
   });
 
   let response = await request.send();
-  // console.log(response)
+
   const dom = Parser.parseHTML(response.body);
-  // console.log(JSON.stringify(dom, null, "        "));
-  // Parser.parseHTML(response.body)
+
+  const viewport = images(800, 600);
+
+  // render(viewport, dom.children[1].children[3].children[1].children[3]);
+  render(viewport, dom);
+  
+  viewport.save("dom.png");
 })();
