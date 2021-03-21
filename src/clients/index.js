@@ -1,5 +1,5 @@
 const Request = require("./request");
-const Parser = require("./html-parser")
+const Parser = require("./html-parser");
 
 void (async function () {
   let request = new Request({
@@ -17,6 +17,7 @@ void (async function () {
 
   let response = await request.send();
   // console.log(response)
-  Parser.parseHTML(response.body)
+  const dom = Parser.parseHTML(response.body);
+  // console.log(JSON.stringify(dom, null, "        "));
+  // Parser.parseHTML(response.body)
 })();
-

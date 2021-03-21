@@ -149,23 +149,28 @@ function layout(element) {
     const item = items[i];
     const itemStyle = getStyle(item);
 
+    // 初始化默认值
     if (itemStyle[mainSize] == null) {
       itemStyle[mainSize] = 0;
     }
 
     if (itemStyle.flex) {
+      // 如果有 flex 属性，则表示在当前行排版
       flexLine.push(item);
     } else if (style.flexWrap === "nowrap" && isAutoMainSize) {
+      // nowrap 属性表示不换行
       mainSpace -= itemStyle[mainSize];
       if (itemStyle[crossSize] !== null && itemStyle[crossSize] !== 0) {
         crossSpace = Math.max(crossSpace, itemStyle[crossSize]);
       }
       flexLine.push(item);
     } else {
+      // 如果子项主轴 size 大于容器，则将其改为容器大小。
       if (itemStyle[mainSize] > style[mainSize]) {
         itemStyle[mainSize] = style[mainSize];
       }
 
+      // 处理换行情况
       if (mainSpace < itemStyle[mainSize]) {
         flexLine.mainSpace = mainSpace;
         flexLine.crossSpace = crossSpace;
@@ -177,28 +182,31 @@ function layout(element) {
         flexLine.push(item);
       }
 
+      // 计算交叉轴剩余空间
       if (itemStyle[crossSize] !== null && itemStyle[crossSize] !== 0) {
         crossSpace = Math.max(crossSpace, itemStyle[crossSize]);
       }
+      // 计算主轴剩余空间
       mainSpace -= itemStyle[mainSize];
     }
   }
-
   flexLine.mainSpace = mainSpace;
+
   /* ------------------- 布局分行结束 ------------------- */
 
   /* ------------------- 计算主轴方向开始 ------------------- */
+  // 如果 flex 容器存在 crossSize 则，当前行使用容器的 crossSize 做为交叉轴空间大小
+  // 否则使用 flex 子项的最大交叉轴大小作为交叉轴空间大小。
   if (style.flexWrap === "nowrap" || isAutoMainSize) {
-    flexLine.crossSpace = style[crossSize !== undefined]
-      ? style[crossSize]
-      : crossSpace;
+    flexLine.crossSpace =
+      style[crossSize] !== undefined ? style[crossSize] : crossSpace;
   } else {
     flex.crossSpace = crossSpace;
   }
 
   if (mainSpace < 0) {
     // overflow  (happens only if container is single line), scale every item
-    // 如果超出就等比例缩放
+    // 如果主轴空间小于 0，则对所有子元素进行等比压缩
     const scale = style[mainSize] / (style[mainSize] - mainSpace);
     const currentMain = mainBase;
 
@@ -220,6 +228,8 @@ function layout(element) {
     // process each flex line
     flexLines.forEach((items) => {
       const mainSpace = items.mainSpace;
+
+      /*
       let flexTotal = 0;
 
       for (let i = 0; i < items.length; i++) {
@@ -230,10 +240,18 @@ function layout(element) {
           flexTotal += items.flex;
         }
       }
+      */
+
+      const flexTotal = items.reduce((acc, curr) => {
+        const itemStyle = getStyle(curr);
+        return itemStyle.flex != null && itemStyle.flex !== 0
+          ? acc + itemStyle.flex
+          : acc;
+      }, 0);
 
       if (flexTotal > 0) {
         // There is flexible flex items
-        const currentMain = mainBase;
+        let currentMain = mainBase;
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           const itemStyle = getStyle(item);
@@ -241,6 +259,7 @@ function layout(element) {
           if (itemStyle.flex) {
             itemStyle[mainSize] = (mainSpace / flexTotal) * itemStyle.flex;
           }
+
           itemStyle[mainStart] = currentMain;
           itemStyle[mainEnd] =
             itemStyle[mainStart] + mainSign * itemStyle[mainSize];
@@ -270,7 +289,7 @@ function layout(element) {
         }
 
         if (style.justifyContent === "space-around") {
-          step = (mainSpace / items.lengt) * mainSign;
+          step = (mainSpace / items.length) * mainSign;
           currentMain = step / 2 + mainBase;
         }
 
@@ -278,15 +297,116 @@ function layout(element) {
           const item = items[i];
           const itemStyle = getStyle(item);
           items[mainStart] = currentMain;
-          // itemStyle[(mainSign, currentMain)];
           itemStyle[mainEnd] =
             itemStyle[mainStart] + mainSign * itemStyle[mainSize];
-            currentMain = itemStyle[mainEnd] + step;
+          currentMain = itemStyle[mainEnd] + step;
         }
       }
     });
   }
   /* ------------------- 计算主轴方向结束 ------------------- */
+
+  /* ------------------- 计算交叉轴方向开始 ------------------- */
+  // let crossSpace;
+
+  // auto sizing
+  if (!style[crossSize]) {
+    crossSpace = 0;
+    elementStyle[crossSize] = 0;
+
+    for (let i = 0; i < flexLines.length; i++) {
+      elementStyle[crossSize] =
+        elementStyle[crossSize] + flexLines[i].crossSpace;
+    }
+  } else {
+    crossSpace = style[crossSize];
+    for (let i = 0; i < flexLines.length; i++) {
+      crossSpace -= flexLines[i].crossSpace;
+    }
+  }
+
+  if (style.flexWrap === "wrap-reverse") {
+    crossBase = style[crossSize];
+  } else {
+    crossBase = 0;
+  }
+  const lineSize = style[crossSize] / flexLines.length;
+
+  let step;
+
+  if (style.alignContent === "flex-start") {
+    crossBase += 0;
+    step = 0;
+  }
+  if (style.alignContent === "flex-end") {
+    crossBase += crossSize * crossSpace;
+    step = 0;
+  }
+  if (style.alignContent === "center") {
+    crossBase += (crossSign * crossSpace) / 2;
+    step = 0;
+  }
+  if (style.alignContent === "space-between") {
+    crossBase += 0;
+    step = crossSpace / (flexLines.length - 1);
+  }
+  if (style.alignContent === "space-around") {
+    step = crossSpace / flexLines.length;
+    crossBase += (crossSign * step) / 2;
+  }
+  if (style.alignContent === "stretch") {
+    crossBase += 0;
+    step = 0;
+  }
+
+  flexLines.forEach((items) => {
+    const lineCrossSize =
+      style.alignContent === "stretch"
+        ? items.crossSpace + crossSpace / flexLines.length
+        : items.crossSpace;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemStyle = getStyle(item);
+      const align = itemStyle.alignSelf || style.alignItems;
+
+      if (item === null) {
+        itemStyle[crossSize] = align === "stretch" ? lineCrossSize : 0;
+      }
+
+      if (align === "flex-start") {
+        itemStyle[crossStart] = crossBase;
+        itemStyle[crossEnd] =
+          itemStyle[crossStart] + crossSign * itemStyle[crossSize];
+      }
+      if (align === "flex-end") {
+        itemStyle[crossEnd] = crossBase + crossSize * lineCrossSize;
+        itemStyle[crossStart] =
+          itemStyle[crossEnd] - crossSign * itemStyle[crossSize];
+      }
+      if (align === "center") {
+        itemStyle[crossStart] =
+          crossBase + (crossSize * (lineCrossSize - itemStyle[crossSize])) / 2;
+        itemStyle[crossEnd] = itemStyle[crossStart];
+      }
+      if (align === "stretch") {
+        itemStyle[crossStart] = crossBase;
+        itemStyle[crossEnd] =
+          crossBase +
+          crossSign *
+            (itemStyle[crossSize] != null && itemStyle[crossSize] !== 0
+              ? itemStyle[crossSize]
+              : lineCrossSize);
+        itemStyle[crossSize] =
+          crossSign * (itemStyle[crossEnd] - itemStyle[crossStart]);
+      }
+    }
+    crossBase += crossSign * (lineCrossSize + step);
+  });
+
+  // console.log(items);
+
+  /* ------------------- 计算交叉轴方向结束 ------------------- */
 }
 
 module.exports = layout;
